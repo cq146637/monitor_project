@@ -1,0 +1,509 @@
+Django 1.11.8
+
+服务开启问题
+
+    运行时如果设置127.0.0.1:8000，那么本机以外的主机将不能访问Django服务器
+
+
+redis如果没有运行，那么在服务开启时，应该提示
+
+
+Django联合唯一
+
+class T_S(models.Model):
+    teacher_id = models.ForeignKey(Teacher)
+    student_id = models.ForeignKey(Student)
+    class Meta():
+        unique_together = (
+             ('teacher_id','student_id'), 
+　　　　　)
+
+
+Foringkey字段必须指定on_delete级联操作，默认没有指定
+
+Admin中看对有意义的数据名称而不是object通用字段
+
+    py2 中重写__unicode__()，返回self.name
+    py3 中重写__str__()，返回self.name
+
+
+可执行文件编写
+
+    import os
+    import sys
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.append(BASE_DIR)
+
+    from core import main
+
+    if '__main__' == __name__:
+        client = main.command_handler(sys.argv)
+
+
+对于周期性任务
+
+    白痴做法：每人任务开一个时间戳循环计时，容易浪费资源，该任务只在某一时间点上才执行，其它时间都在瞎忙
+
+    同一时间戳：所有的周期性任务在此计时，每个任务都记录自己的时间戳，当前时间戳-记录时间戳大于周期时间，说明有任务要工作了，
+    此时不能再主线程直接执行任务，因为还有很多时间戳都在计时着，有一个任务在主线程执行自己的工作，必定会影响其他任务，所以，
+    对于周期性工作到来的任务，要单独开子线程，单独执行，避免了影响主线程的运行
+
+
+python commands模块在python3.x被subprocess取代
+
+
+监控数据存储优化方案
+
+    两周内：每10分钟存一个记录点，10分钟内的数据取平均值，一共有2016个记录点
+    一个月内：每20分钟存一个记录点，20分钟内的数据取平均值，一共有2160个记录点
+    半年内：每60分钟存一个记录点，60分钟内的数据取平均值，一共有4320个记录点
+    一年内：每2小时存一个记录点，2小时内的数据取平均值，一共有4380个记录点
+    两年内：每6小时存一个记录点，6小时内的数据取平均值，一共有2920个记录点
+    五年内：每24小时存一个记录点，24小时内的数据取平均值，一共有1825个记录点
+    十年内：每3天存一个记录点，3天内的数据取平均值，一共有1220个记录点
+    十年以上：每一周存一个记录点，一周内的数据取平均值，至少480个记录点
+
+    opt_timerange = {
+        'latest':[ ... ]
+        '10min':['2016 point', 600s, timestamp]
+        '20min':['2160 point', 1200s, timestamp]
+        '60min':['4320 point', 3600s, timestamp]
+        '2h':['4380 point', 7200s, timestamp]
+        '6h':['2920 point', 21600s, timestamp]
+        '1d':['1825 point', 86400s, timestamp]
+        '3d':['1220 point', 259200s, timestamp]
+        '1w':['2016 point', 604800, timestamp]
+    }
+
+
+
+监控数据格式
+
+    两种格式的监控数据data所在层数不同，要写单独处理的函数
+
+    ('---report data:',{
+        'service_name': u'LinuxCPU', 
+        'data': '{
+            "system": "0.00", 
+            "status": 0, 
+            "idle": "98.31", 
+            "user": "1.35", 
+            "nice": "0.00"
+        }', 
+    'client_id': 1})
+
+    ('---report data:', {
+        'service_name': u'LinuxNetwork', 
+        'data': '{
+            "status": 0,
+             "data": {
+                 "lo": {"t_in": "0.00", "t_out": "0.00"}, 
+                 "ens33": {"t_in": "0.21", "t_out": "0.70"}, 
+                 "virbr0-nic": {"t_in": "0.00", "t_out": "0.00"}, 
+                 "virbr0": {"t_in": "0.00", "t_out": "0.00"}
+            }
+        }', 
+    'client_id': 1})
+
+
+待提升点
+
+    定时优化的数据，是获取整个Redis内存队列，当内存大时会GG
+
+
+在没有确定保证返回正确无误的情况下，需要再次判断函数的返回结果是否是自己想要的
+
+
+PEP8规定编程规范一行不能超过80个字符
+
+
+将触发的报警信息以订阅发布的形式在Redis中发布，将有一个单独的模块专门处理报警信息
+
+
+MonitorServer模块的start 复杂监控主机是否存活
+
+
+MonitorServer模块的trigger_watch 复杂监控订阅频道有没有发布报警信息
+
+
+主流的监控画图软件
+
+    Highcharts 画动态流量图比较多
+
+    ECharts 画静态图比较多
+
+
+配置文件API： https://docs.djangoproject.com/en/2.0/ref/
+
+
+
+redis中获取列表数据时，已经帮你序列化之后才发送过来的
+
+
+--------------------------------------------
+Linux CPU information
+{
+    'user': user,
+    'nice': nice,
+    'system': system,
+    'iowait': iowait,
+    'steal': steal,
+    'idle': idle,
+    'status': status
+}
+
+---------------------------------------------
+Linux Memory information
+{
+    "MemTotal": "999936",
+    "MemFree": "96532",
+    "Buffers": "72",
+    "Cached": "320888",
+    "MemUsage": "",
+    "MemUsage_p": "12.1",  # 内存利用率
+    "SwapTotal": "2097148",
+    "SwapFree": "1830740",
+    "SwapUsage": "",
+    "SwapUsage_p": ""
+    'status': 0
+
+} 
+
+---------------------------------------------
+Linux Network information
+data:{
+    "data":{
+        "br0":{"t_in": "0.00","t_out": "0.00" },
+        "ens37":{"t_in": "4.23","t_out": "2.30" },
+        "lo":{"t_in": "0.00","t_out": "0.00" },
+    }
+}
+
+---------------------------------------------
+Linux sysinfo information
+
+返回数据
+1.cpyinfo
+{
+    "cpu_count": "1",
+    "cpu_core_count": "1",
+    "cpu_model": "Intel(R) Core(TM)2 Quad CPU    Q8400  @ 2.66GHz"
+}
+
+2.osinfo
+yum -y install redhat-lsb
+{
+    "os_distribution": "CentOS",
+    "os_release": "CentOS Linux release 7.3.1611 (Core)",
+    "os_type": "linux"
+}
+
+3.raminfo
+{
+    'ram': [{
+        'slot': 'RAM slot #0', 
+        'capacity': '1024',
+        'manufactory': 'Not Specified',
+        'asset_tag': 'Not Specified',
+        'sn': 'Not Specified', 'model': 'DRAM'}], 
+    'ram_size': 976
+}
+
+4.
+{
+    'nic': [{
+            'macaddress': '00:0c:29:57:cb:50', 
+            'name': 'ens37',
+            'netmask': '0', 
+            'bonding': 0, 
+            'model': 'unknown',
+            'ipaddress': '0', 
+            'network': None}, 
+        {
+            'macaddress': '52:54:00:f5:23:0e', 
+            'name': 'virbr0-nic', 
+            'netmask': '0', 
+            'bonding': 0, 
+            'model': 'unknown', 
+            'ipaddress': '0', 
+            'network': None}, 
+        {
+            'macaddress': '0', 
+            'name': 'br0', 
+            'netmask': '255.255.255.0', 
+            'bonding': 0, 
+            'model': 'unknown', 
+            'ipaddress': '192.168.76.10', 
+            'network': '192.168.76.255'}, 
+        {
+            'macaddress': '00:0c:29:57:cb:5a', 
+            'name': 'ens38', 
+            'netmask': '0', 
+            'bonding': 0, 
+            'model': 'unknown', 
+            'ipaddress': '0', 
+            'network': None}, 
+        {
+            'macaddress': '0_bonding_addr2', 
+            'name': 'virbr0', 
+            'netmask': '255.255.255.0', 
+            'bonding': 1, 
+            'model': 'unknown', 
+            'ipaddress': '192.168.122.1', 
+            'network': '192.168.122.255'}, 
+        {
+            'macaddress': '0_bonding_addr', 
+            'name': 'ens33', 
+            'netmask': '255.255.255.0', 
+            'bonding': 1, 'model': 'unknown', 
+            'ipaddress': '192.168.198.128', 
+            'network': '192.168.198.255'}
+    ]
+}
+
+5.diskinfo
+{
+
+}
+6.它们的集合+
+{
+    "asset_type": "server",
+    'manufactory': "VMware, Inc.",
+    "sn": "VMware-56 4d 09 a3 7d 67 41 6d-41 35 f1 8d 87 57 cb 46",
+    "model": "VMware Virtual Platform",
+    "uuid": "A3094D56-677D-6D41-4135-F18D8757CB46",
+    "wake_up_type": "Power Switch",
+}
+
+---------------------------------------------
+
+
+注意，处理网卡报告时，命令返回的是字节需要转换成字符串
+
+name = 'laogaoyang'
+nameBytes = name.encode('utf-8')   # 字节
+nameStr = nameBytes.decode('utf-8')# 字符串
+
+
+views 中53number   由于DataStore已经为实时数据做过存储这里还往列表首部塞数据不知道为什么先注释了
+
+---------------------------------------------
+sendMail配置可行
+发送qq邮箱
+1.
+send_mail(
+    'hello sum one',
+    'hello worlds cdb quit',
+    '1016025625@qq.com',
+    ['1016025625@qq.com', 'cq146637@163.com'],
+)
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_HOST = 'smtp.qq.com'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = '1016025625@qq.com'
+EMAIL_HOST_PASSWORD = 'wtjthxuryuoibeaj'
+DEFAULT_FROM_EMAIL = 'CQ<1016025625@qq.com>'
+2.
+send_mail(
+    '啊啊啊啊啊啊',
+    'hello worlds cdb quit aaa bbb ccawfwe啊啊啊 awfgwag aw gwasf',
+    'cq146637@163.com',
+    ['1016025625@qq.com'],
+)
+EMAIL_USE_TLS = False
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25
+EMAIL_HOST_USER = 'cq146637@163.com'
+EMAIL_HOST_PASSWORD = 'qwqw1560'
+DEFAULT_FROM_EMAIL = 'CQ<cq146637@163.com>'
+
+发送163邮箱
+send_mail(
+    'hello sum one',
+    'hello worlds cdb quit',
+    'cq146637@163.com',
+    ['cq146637@163.com'],
+)
+1.
+    EMAIL_USE_TLS = False
+    EMAIL_HOST = 'smtp.163.com'
+    EMAIL_PORT = 25
+    EMAIL_HOST_USER = 'cq146637@163.com'
+    EMAIL_HOST_PASSWORD = 'qwqw1560'
+    DEFAULT_FROM_EMAIL = 'CQ<cq146637@163.com>'
+2.
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 587/465
+EMAIL_HOST_USER = 'cq146637@163.com'
+EMAIL_HOST_PASSWORD = 'qwqw1560'
+DEFAULT_FROM_EMAIL = 'CQ<cq146637@163.com>'
+
+
+---------------------------------------------
+
+1. 邮件报警
+
+    发送到频道上的报警数据格式
+
+        {
+            'host_id': 2,
+            'trigger_id': 1,
+            'positive_expressions': [{'calc_res': True, 'calc_res_val': 87.49, 'expression_obj': 1, 'service_item': None}],
+            'msg': 'CPU IDLE & MEM FREE', 
+            'time': '2018-01-28 05:17:59', 
+            'start_time': 1517087879.7030547, 
+            'duration': None
+        }
+
+
+    'Host({hostname},{ip}) service({service_name}) has issue at ({time}),msg:{msg}'.format()
+
+
+
+
+
+2. 前端画图
+
+
+    首先，创建一个div
+    把数据图的标题和数据和div的id属性传入函数
+
+    直接传递数据方式：
+
+        function CreateSingleGraph(service_name,service_data,graph_ele_id){
+                var seriesOptions = [],
+                //seriesCounter = 0,
+                //names = ['MSFT', 'AAPL', 'GOOG'],
+                // create the chart when all data is loaded
+                createChart = function () {
+                    $('#' + graph_ele_id).highcharts('StockChart', {
+                        rangeSelector: {
+                            selected: 0,
+                            buttons: [{
+                                type: 'minute',
+                                count: 30,
+                                text: '30分'
+                            }, {
+                                type: 'hour',
+                                count: 3,
+                                text: '3时'
+                            }, {
+                                type: 'day',
+                                count: 1,
+                                text: '1天'
+                            }, {
+                                type: 'week',
+                                count: 1,
+                                text: '1周'
+                            }, {
+                                type: 'month',
+                                count: 1,
+                                text: '1月'
+                            }, {
+                                type: 'all',
+                                count: 1,
+                                text: 'All'
+                            }]
+                        },
+
+                        legend: {
+                            enabled: true,
+                            align: 'center',
+                            backgroundColor: '#FCFFC5',
+                            borderColor: 'black',
+                            borderWidth: 2,
+                            layout: 'horizontal',
+                            verticalAlign: 'top',
+                            y: 100,
+                            shadow: true
+                        },
+                        title: {
+                            text: service_name,
+                            align: 'left',
+                            x: 40
+                        },
+                        yAxis: {
+
+                            plotLines: [{
+                                value: 0,
+                                width: 2,
+                                color: 'silver'
+                            }]
+                        },
+                        tooltip: {
+                            pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
+                            valueDecimals: 2
+                        },
+                        series: seriesOptions
+                    });
+                };
+            $.each(service_data, function (item_name, item_data) {
+                //$.getJSON('http://www.hcharts.cn/datas/jsonp.php?filename=' + name.toLowerCase() + '-c.json&callback=?',    function (data) {
+                    seriesOptions.push({
+                        name: item_name,
+                        data: item_data
+                    });
+                    // As we're loading the data asynchronously, we don't know what order it will arrive. So
+                    // we keep a counter and create the chart when all the data is loaded.
+                    /*seriesCounter += 1;
+                    if (seriesCounter === names.length) {
+                        createChart();
+                    }*/
+                //});
+            });
+            createChart();
+        }
+
+    JSONP传递数据方式：
+
+        $.getJSON('https://data.jianshukeji.com/stock/history/000001', function (data) {
+            if(data.code !== 1) {
+                alert('读取股票数据失败！');
+                return false;
+            }
+            data = data.data;
+            // 去掉多余的数据
+            Highcharts.each(data, function(d) {
+                d.length = 2;
+            });
+            Highcharts.stockChart('container', {
+                rangeSelector: {
+                    selected: 2
+                },
+                title: {
+                    text: '平安银行历史股价'
+                },
+                plotOptions: {
+                    series: {
+                        showInLegend: true
+                    }
+                },
+                tooltip: {
+                    split: false,
+                    shared: true
+                },
+                series: [{
+                    // type: 'line',
+                    id: '000001',
+                    name: '平安银行',
+                    data: data
+                }]
+            });
+        });
+
+
+    BUG 在画图的时候，获取的是最后是一个信息的，用它来构造画图数据格式，如何最后一个数据是空的将会报错，我们要手动删除最后一个
+
+
+3. HTTP获取客户端IP
+
+    def get_client_ip(self,request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[-1].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip

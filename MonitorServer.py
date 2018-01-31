@@ -1,0 +1,11 @@
+# -*- coding: utf-8 -*-
+__author__ = 'CQ'
+import os
+import sys
+
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "untitled.settings")
+
+    from monitor.backends.management import execute_from_command_line
+
+    execute_from_command_line(sys.argv)
